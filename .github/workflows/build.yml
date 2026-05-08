@@ -31,7 +31,7 @@ jobs:
       - name: Generate Gradle wrapper (if missing)
         run: |
           if [ ! -f gradlew ]; then
-            gradle wrapper --gradle-version 8.5 --distribution-type bin
+            gradle wrapper --gradle-version 9.4.1 --distribution-type bin
           fi
           chmod +x gradlew
 
