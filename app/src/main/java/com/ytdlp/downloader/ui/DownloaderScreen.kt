@@ -2,8 +2,11 @@ package com.ytdlp.downloader.ui
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Environment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,14 +18,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,8 +51,9 @@ fun DownloaderScreen(viewModel: MainViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context: Context = LocalContext.current
 
+    // Save to the public Downloads folder so it's visible in any file manager
     val downloadDir = remember {
-        File(context.getExternalFilesDir(null), "Downloads")
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             .apply { mkdirs() }
             .absolutePath
     }
@@ -78,7 +83,7 @@ fun DownloaderScreen(viewModel: MainViewModel) {
             )
 
             // Action buttons
-            androidx.compose.foundation.layout.Row(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -87,7 +92,7 @@ fun DownloaderScreen(viewModel: MainViewModel) {
                     enabled = !state.isWorking && state.url.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Info, null)
+                    Icon(Icons.Default.Info, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text("Info")
                 }
@@ -97,7 +102,7 @@ fun DownloaderScreen(viewModel: MainViewModel) {
                     enabled = !state.isWorking && state.url.isNotBlank(),
                     modifier = Modifier.weight(1.4f)
                 ) {
-                    Icon(Icons.Default.Download, null)
+                    Icon(Icons.Default.Download, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
                     Text(if (state.isWorking) "Working…" else "Download")
                 }
@@ -141,20 +146,40 @@ fun DownloaderScreen(viewModel: MainViewModel) {
             state.lastFile?.let { path ->
                 Card {
                     Column(Modifier.padding(12.dp)) {
-                        Text("Saved", style = MaterialTheme.typography.labelMedium)
+                        Text("Saved to Downloads", style = MaterialTheme.typography.labelMedium)
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            path,
+                            File(path).name,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { shareFile(context, path) }
-                        ) {
-                            Icon(Icons.Default.Share, null)
-                            Spacer(Modifier.width(6.dp))
-                            Text("Share")
+                        Spacer(Modifier.height(10.dp))
+                        // Three action buttons: Play, Open Folder, Share
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { playFile(context, path) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+                                Spacer(Modifier.width(4.dp))
+                                Text("Play")
+                            }
+                            OutlinedButton(
+                                onClick = { openDownloadsFolder(context) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.FolderOpen, contentDescription = "Open folder")
+                                Spacer(Modifier.width(4.dp))
+                                Text("Folder")
+                            }
+                            OutlinedButton(
+                                onClick = { shareFile(context, path) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = "Share")
+                                Spacer(Modifier.width(4.dp))
+                                Text("Share")
+                            }
                         }
                     }
                 }
@@ -162,7 +187,7 @@ fun DownloaderScreen(viewModel: MainViewModel) {
 
             Spacer(Modifier.height(8.dp))
             Text(
-                "Files save under:\n$downloadDir",
+                "Files save to: Downloads",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -170,6 +195,47 @@ fun DownloaderScreen(viewModel: MainViewModel) {
     }
 }
 
+/** Open the downloaded video in the system video player. */
+private fun playFile(context: Context, filePath: String) {
+    val file = File(filePath)
+    if (!file.exists()) return
+    val uri = androidx.core.content.FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "video/*")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Play with…"))
+}
+
+/** Open the Downloads folder in the system file manager. */
+private fun openDownloadsFolder(context: Context) {
+    // ACTION_VIEW on the Downloads content URI opens the file manager at Downloads
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(
+            Uri.parse("content://com.android.externalstorage.documents/document/primary%3ADownload"),
+            "vnd.android.document/directory"
+        )
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    // Fallback: open the generic Downloads app
+    val fallback = Intent(android.provider.DownloadManager.ACTION_VIEW_DOWNLOADS)
+
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        try {
+            context.startActivity(fallback)
+        } catch (_: Exception) {
+            // Nothing to open — silently ignore
+        }
+    }
+}
+
+/** Share the downloaded file with other apps. */
 private fun shareFile(context: Context, filePath: String) {
     val file = File(filePath)
     if (!file.exists()) return
