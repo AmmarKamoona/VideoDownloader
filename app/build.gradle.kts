@@ -4,6 +4,12 @@ plugins {
     id("com.chaquo.python")
 }
 
+// Tell the Kotlin compiler to target JVM 17 bytecode.
+// With AGP 9's built-in Kotlin support, this replaces the old kotlinOptions block.
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     namespace = "com.ytdlp.downloader"
     compileSdk = 34
