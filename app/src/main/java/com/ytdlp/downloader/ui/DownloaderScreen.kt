@@ -5,7 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,35 +18,45 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -74,6 +89,19 @@ fun DownloaderScreen(viewModel: MainViewModel) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Clipboard / share detection banner
+            AnimatedVisibility(
+                visible = state.showQuickDownload && state.clipboardUrl != null,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                ClipboardBanner(
+                    url = state.clipboardUrl ?: "",
+                    onUse = { viewModel.useClipboardUrl() },
+                    onDismiss = { viewModel.dismissClipboardBanner() }
+                )
+            }
+
             OutlinedTextField(
                 value = state.url,
                 onValueChange = viewModel::setUrl,
@@ -203,6 +231,64 @@ fun DownloaderScreen(viewModel: MainViewModel) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+    }
+}
+
+/** Animated banner shown when a video URL is detected on the clipboard or via share. */
+@Composable
+private fun ClipboardBanner(
+    url: String,
+    onUse: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.ContentPaste,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Video link detected",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    url,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            TextButton(
+                onClick = onUse,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Text("Use")
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Dismiss",
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

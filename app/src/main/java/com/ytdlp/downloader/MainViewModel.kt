@@ -16,7 +16,9 @@ data class UiState(
     val isWorking: Boolean = false,
     val lastFile: String? = null,
     val error: String? = null,
-    val videoTitle: String? = null
+    val videoTitle: String? = null,
+    val clipboardUrl: String? = null,   // URL detected from clipboard
+    val showQuickDownload: Boolean = false // show quick-download banner
 )
 
 class MainViewModel : ViewModel() {
@@ -98,5 +100,29 @@ class MainViewModel : ViewModel() {
 
     fun clearError() {
         _state.value = _state.value.copy(error = null)
+    }
+
+    /** Called when a video URL is detected on the clipboard. */
+    fun onClipboardUrlDetected(url: String) {
+        // Only show the banner if it's a different URL than what's already in the field
+        if (url != _state.value.url.trim()) {
+            _state.value = _state.value.copy(clipboardUrl = url, showQuickDownload = true)
+        }
+    }
+
+    /** User tapped "Use" on the clipboard banner — populate the URL field. */
+    fun useClipboardUrl() {
+        val url = _state.value.clipboardUrl ?: return
+        _state.value = _state.value.copy(
+            url = url,
+            clipboardUrl = null,
+            showQuickDownload = false,
+            error = null
+        )
+    }
+
+    /** Dismiss the clipboard banner without using the URL. */
+    fun dismissClipboardBanner() {
+        _state.value = _state.value.copy(clipboardUrl = null, showQuickDownload = false)
     }
 }

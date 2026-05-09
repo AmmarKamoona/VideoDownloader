@@ -1,5 +1,7 @@
 package com.ytdlp.downloader
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -31,6 +33,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        checkClipboardForUrl()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIncomingIntent(intent)
@@ -41,7 +48,45 @@ class MainActivity : ComponentActivity() {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
             if (!sharedText.isNullOrBlank()) {
                 viewModel.setUrl(sharedText)
+                // If it looks like a video URL, also trigger the quick-download banner
+                if (looksLikeVideoUrl(sharedText)) {
+                    viewModel.onClipboardUrlDetected(sharedText)
+                }
             }
+        }
+    }
+
+    private fun checkClipboardForUrl() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val text = clipboard.primaryClip
+            ?.getItemAt(0)
+            ?.coerceToText(this)
+            ?.toString()
+            ?.trim()
+            ?: return
+
+        if (looksLikeVideoUrl(text)) {
+            viewModel.onClipboardUrlDetected(text)
+        }
+    }
+
+    companion object {
+        private val VIDEO_HOSTS = listOf(
+            "youtube.com", "youtu.be",
+            "twitter.com", "x.com",
+            "instagram.com",
+            "tiktok.com",
+            "facebook.com", "fb.watch",
+            "vimeo.com",
+            "dailymotion.com",
+            "twitch.tv",
+            "reddit.com",
+            "bilibili.com"
+        )
+
+        fun looksLikeVideoUrl(text: String): Boolean {
+            if (!text.startsWith("http://") && !text.startsWith("https://")) return false
+            return VIDEO_HOSTS.any { host -> text.contains(host) }
         }
     }
 }
