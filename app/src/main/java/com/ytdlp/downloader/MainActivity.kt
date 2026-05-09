@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     DownloaderScreen(
                         viewModel         = viewModel,
-                        isBubbleEnabled   = Settings.canDrawOverlays(this),
+                        isBubbleEnabled   = Settings.canDrawOverlays(this) && isServiceRunning(),
                         onToggleBubble    = { toggleBubble() }
                     )
                 }
@@ -87,12 +87,28 @@ class MainActivity : ComponentActivity() {
 
     private fun toggleBubble() {
         if (Settings.canDrawOverlays(this)) {
-            // Already granted — stop the service (toggle off)
-            stopService(Intent(this, ClipboardService::class.java))
+            // Permission granted — toggle the service on/off
+            val serviceIntent = Intent(this, ClipboardService::class.java)
+            if (isServiceRunning()) {
+                stopService(serviceIntent)
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent)
+                } else {
+                    startService(serviceIntent)
+                }
+            }
         } else {
-            // Need permission — open the permission screen
+            // Need permission first
             startActivity(Intent(this, OverlayPermissionActivity::class.java))
         }
+    }
+
+    private fun isServiceRunning(): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        @Suppress("DEPRECATION")
+        return manager.getRunningServices(Int.MAX_VALUE)
+            .any { it.service.className == ClipboardService::class.java.name }
     }
 
     companion object {

@@ -88,6 +88,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytdlp.downloader.MainViewModel
+import com.ytdlp.downloader.ui.theme.Gold
+import com.ytdlp.downloader.ui.theme.GoldDim
 import com.ytdlp.downloader.ui.theme.GreenSpot
 import com.ytdlp.downloader.ui.theme.Neon
 import com.ytdlp.downloader.ui.theme.NeonBright
@@ -797,19 +799,34 @@ private fun FooterCredit() {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.width(24.dp).height(1.dp).background(SpotLine))
+            Box(Modifier.width(28.dp).height(1.dp).background(
+                Brush.linearGradient(listOf(Color.Transparent, GoldDim))
+            ))
             Spacer(Modifier.width(10.dp))
-            Text("AK", style = MaterialTheme.typography.labelSmall, color = SpotMuted, letterSpacing = 2.sp)
+            Text(
+                "AK",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    brush = Brush.linearGradient(listOf(Gold, GoldDim))
+                ),
+                letterSpacing = 3.sp
+            )
             Spacer(Modifier.width(10.dp))
-            Box(Modifier.width(24.dp).height(1.dp).background(SpotLine))
+            Box(Modifier.width(28.dp).height(1.dp).background(
+                Brush.linearGradient(listOf(GoldDim, Color.Transparent))
+            ))
         }
-        Text("ammarkamoona.2012@gmail.com", style = MaterialTheme.typography.labelSmall, color = SpotMuted.copy(alpha = 0.6f), textAlign = TextAlign.Center)
+        Text(
+            "ammarkamoona.2012@gmail.com",
+            style = MaterialTheme.typography.labelSmall,
+            color = Gold.copy(alpha = 0.65f),
+            textAlign = TextAlign.Center
+        )
     }
 }
 

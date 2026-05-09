@@ -33,3 +33,5 @@ val GreenDim    = Color(0xFF0A3D1F)
 val RedErr      = Color(0xFFE5534B)
 val RedDim      = Color(0xFF3D0A0A)
 val Amber       = Color(0xFFFFA500)
+val Gold        = Color(0xFFFFD700)   // creator credit
+val GoldDim     = Color(0xFFB8960C)   // divider lines
