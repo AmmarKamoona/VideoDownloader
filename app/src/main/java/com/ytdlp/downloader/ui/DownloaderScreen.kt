@@ -98,6 +98,7 @@ import com.ytdlp.downloader.ui.theme.SpotDark1
 import com.ytdlp.downloader.ui.theme.SpotDark2
 import com.ytdlp.downloader.ui.theme.SpotDark3
 import com.ytdlp.downloader.ui.theme.SpotDark4
+import com.ytdlp.downloader.ui.theme.SpotLine
 import com.ytdlp.downloader.ui.theme.SpotMuted
 import com.ytdlp.downloader.ui.theme.SpotSub
 import com.ytdlp.downloader.ui.theme.SpotWhite

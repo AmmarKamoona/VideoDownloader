@@ -51,7 +51,7 @@ jobs:
             chaquopy-
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1 | tail -200
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Get APK info
         id: apk_info
