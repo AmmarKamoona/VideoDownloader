@@ -1,4 +1,4 @@
-package com.ytdlp.downloader.ui
+﻿package com.ytdlp.downloader.ui
 
 import android.app.DownloadManager
 import android.content.Context
@@ -7,8 +7,14 @@ import android.net.Uri
 import android.os.Environment
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -19,6 +25,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,7 +46,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Switch
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
@@ -46,8 +54,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,6 +62,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,8 +71,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -74,19 +84,28 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytdlp.downloader.MainViewModel
-import com.ytdlp.downloader.ui.theme.Dark600
-import com.ytdlp.downloader.ui.theme.Success
-import com.ytdlp.downloader.ui.theme.Violet400
-import com.ytdlp.downloader.ui.theme.Violet500
-import com.ytdlp.downloader.ui.theme.Violet600
-import com.ytdlp.downloader.ui.theme.Violet700
+import com.ytdlp.downloader.ui.theme.GreenSpot
+import com.ytdlp.downloader.ui.theme.Neon
+import com.ytdlp.downloader.ui.theme.NeonBright
+import com.ytdlp.downloader.ui.theme.NeonDim
+import com.ytdlp.downloader.ui.theme.NeonGlow
+import com.ytdlp.downloader.ui.theme.SpotBlack
+import com.ytdlp.downloader.ui.theme.SpotDark1
+import com.ytdlp.downloader.ui.theme.SpotDark2
+import com.ytdlp.downloader.ui.theme.SpotDark3
+import com.ytdlp.downloader.ui.theme.SpotDark4
+import com.ytdlp.downloader.ui.theme.SpotMuted
+import com.ytdlp.downloader.ui.theme.SpotSub
+import com.ytdlp.downloader.ui.theme.SpotWhite
 import java.io.File
 
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen
+// Root Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,33 +120,29 @@ fun DownloaderScreen(
 
     val downloadDir = remember {
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            .apply { mkdirs() }
-            .absolutePath
+            .apply { mkdirs() }.absolutePath
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
+    Scaffold(containerColor = SpotDark1) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // ── Hero header ───────────────────────────────────────────────────
-            AppHeader(isBubbleEnabled = isBubbleEnabled, onToggleBubble = onToggleBubble)
+            // ── Immersive hero ────────────────────────────────────────────────
+            HeroSection(isBubbleEnabled = isBubbleEnabled, onToggleBubble = onToggleBubble)
 
-            // ── Content ───────────────────────────────────────────────────────
+            // ── Main content ──────────────────────────────────────────────────
             Column(
                 modifier = Modifier.padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Clipboard / share banner
+                // Clipboard detection banner
                 AnimatedVisibility(
                     visible = state.showQuickDownload && state.clipboardUrl != null,
-                    enter = expandVertically(spring(stiffness = Spring.StiffnessMedium)) +
-                            fadeIn(tween(200)),
-                    exit  = shrinkVertically(tween(180)) + fadeOut(tween(150))
+                    enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(250)),
+                    exit  = shrinkVertically(tween(200)) + fadeOut(tween(150))
                 ) {
                     ClipboardBanner(
                         url       = state.clipboardUrl ?: "",
@@ -137,168 +152,223 @@ fun DownloaderScreen(
                 }
 
                 // URL input
-                UrlInputCard(
-                    url       = state.url,
-                    enabled   = !state.isWorking,
-                    onChange  = viewModel::setUrl
+                UrlInput(url = state.url, enabled = !state.isWorking, onChange = viewModel::setUrl)
+
+                // Primary download button
+                DownloadButton(
+                    isWorking  = state.isWorking,
+                    hasUrl     = state.url.isNotBlank(),
+                    onDownload = { viewModel.download(downloadDir) }
                 )
 
-                // Action buttons
-                ActionRow(
+                // Info button (secondary)
+                InfoButton(
                     isWorking = state.isWorking,
                     hasUrl    = state.url.isNotBlank(),
-                    onInfo    = { viewModel.fetchInfo() },
-                    onDownload = { viewModel.download(downloadDir) }
+                    onInfo    = { viewModel.fetchInfo() }
                 )
 
                 // Progress
                 AnimatedVisibility(
                     visible = state.isWorking,
-                    enter   = fadeIn() + expandVertically(),
-                    exit    = fadeOut() + shrinkVertically()
-                ) {
-                    ProgressCard(status = state.status)
-                }
+                    enter   = fadeIn(tween(300)) + expandVertically(),
+                    exit    = fadeOut(tween(200)) + shrinkVertically()
+                ) { ProgressSection(status = state.status) }
 
-                // Video title preview
+                // Video title
                 AnimatedVisibility(
                     visible = state.videoTitle != null,
-                    enter   = fadeIn(tween(300)) + slideInVertically { it / 2 },
+                    enter   = fadeIn(tween(350)) + slideInVertically { it / 3 },
                     exit    = fadeOut(tween(200))
-                ) {
-                    state.videoTitle?.let { TitleCard(title = it) }
-                }
+                ) { state.videoTitle?.let { TitleTrackCard(title = it) } }
 
                 // Error
                 AnimatedVisibility(
                     visible = state.error != null,
                     enter   = fadeIn(tween(250)) + expandVertically(),
                     exit    = fadeOut(tween(200)) + shrinkVertically()
-                ) {
-                    state.error?.let { ErrorCard(message = it) }
-                }
+                ) { state.error?.let { ErrorBanner(message = it) } }
 
-                // Success / file card
+                // Success
                 AnimatedVisibility(
                     visible = state.lastFile != null,
-                    enter   = fadeIn(tween(350)) + slideInVertically { it / 2 },
+                    enter   = fadeIn(tween(400)) + slideInVertically { it / 3 },
                     exit    = fadeOut(tween(200))
-                ) {
-                    state.lastFile?.let {
-                        SuccessCard(
-                            filePath = it,
-                            context  = context
-                        )
-                    }
-                }
+                ) { state.lastFile?.let { DownloadedTrackCard(filePath = it, context = context) } }
 
+                Spacer(Modifier.height(40.dp))
+                FooterCredit()
                 Spacer(Modifier.height(32.dp))
-
-                // Footer
-                Footer()
-
-                Spacer(Modifier.height(24.dp))
             }
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header
+// Hero Section  — Spotify "Now Playing" inspired
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun AppHeader(isBubbleEnabled: Boolean, onToggleBubble: () -> Unit) {
+private fun HeroSection(isBubbleEnabled: Boolean, onToggleBubble: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-                        Color.Transparent
-                    )
-                )
-            )
-            .padding(top = 48.dp, bottom = 28.dp, start = 24.dp, end = 24.dp)
+            .height(300.dp)
     ) {
-        Column {
-            // Logo pill
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.linearGradient(listOf(Violet600, Violet400))
-                    )
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    "LEGEND",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    letterSpacing = androidx.compose.ui.unit.TextUnit(
-                        2f, androidx.compose.ui.unit.TextUnitType.Sp
+        // Deep background
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SpotBlack)
+        )
+
+        // Radial glow — the "album art" atmosphere
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Neon.copy(alpha = 0.35f),
+                            Neon.copy(alpha = 0.10f),
+                            Color.Transparent
+                        ),
+                        center = Offset(0.3f * 1080f, 0f),
+                        radius = 700f
                     )
                 )
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "Video Downloader",
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Paste any video link and download instantly",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        )
 
-            Spacer(Modifier.height(20.dp))
+        // Secondary warm glow bottom-right
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            GreenSpot.copy(alpha = 0.12f),
+                            Color.Transparent
+                        ),
+                        center = Offset(1080f, 900f),
+                        radius = 500f
+                    )
+                )
+        )
 
-            // Floating bubble toggle
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        // Fade to scaffold at bottom
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(listOf(Color.Transparent, SpotDark1))
+                )
+        )
+
+        // Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 24.dp, end = 24.dp, top = 56.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Top: badge
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isBubbleEnabled) Violet600.copy(alpha = 0.2f)
-                            else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-                        ),
-                    contentAlignment = Alignment.Center
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Neon.copy(alpha = 0.18f))
+                        .border(1.dp, Neon.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Text("⬇", style = MaterialTheme.typography.bodyMedium)
-                }
-                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Floating Bubble",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        if (isBubbleEnabled)
-                            "Shows a bubble when you copy a video link"
-                        else
-                            "Tap to enable — detects links in other apps",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "LEGEND",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = NeonBright,
+                        letterSpacing = 2.sp
                     )
                 }
-                Switch(
-                    checked         = isBubbleEnabled,
-                    onCheckedChange = { onToggleBubble() }
+            }
+
+            // Middle: big title
+            Column {
+                Text(
+                    "Video",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = SpotWhite
+                )
+                Text(
+                    "Downloader",
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        brush = Brush.linearGradient(listOf(NeonBright, GreenSpot))
+                    )
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "YouTube · Instagram · TikTok · and more",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SpotSub
                 )
             }
+
+            // Bottom: bubble toggle row
+            BubbleToggleRow(isBubbleEnabled = isBubbleEnabled, onToggle = onToggleBubble)
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bubble toggle
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun BubbleToggleRow(isBubbleEnabled: Boolean, onToggle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(SpotDark3.copy(alpha = 0.85f))
+            .clickable { onToggle() }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isBubbleEnabled) Neon.copy(alpha = 0.2f) else SpotDark4
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("⬇", fontSize = 15.sp)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Floating Bubble",
+                style = MaterialTheme.typography.titleSmall,
+                color = SpotWhite
+            )
+            Text(
+                if (isBubbleEnabled) "Active — watching for video links"
+                else "Enable to detect links in other apps",
+                style = MaterialTheme.typography.bodySmall,
+                color = SpotSub
+            )
+        }
+        Switch(
+            checked         = isBubbleEnabled,
+            onCheckedChange = { onToggle() },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor       = SpotWhite,
+                checkedTrackColor       = Neon,
+                uncheckedThumbColor     = SpotSub,
+                uncheckedTrackColor     = SpotDark4,
+                uncheckedBorderColor    = SpotLine
+            )
+        )
     }
 }
 
@@ -312,98 +382,75 @@ private fun ClipboardBanner(url: String, onUse: () -> Unit, onDismiss: () -> Uni
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(14.dp)
+            .background(
+                Brush.linearGradient(
+                    listOf(NeonDim.copy(alpha = 0.6f), SpotDark3)
+                )
             )
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .border(1.dp, Neon.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(36.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                .background(Neon.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                Icons.Default.ContentPaste,
-                contentDescription = null,
-                tint   = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp)
-            )
+            Icon(Icons.Default.ContentPaste, null, tint = NeonBright, modifier = Modifier.size(17.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "Video link detected",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                url,
-                style    = MaterialTheme.typography.bodySmall,
-                color    = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text("Link detected", style = MaterialTheme.typography.titleSmall, color = SpotWhite)
+            Text(url, style = MaterialTheme.typography.bodySmall, color = SpotSub, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        TextButton(
-            onClick = onUse,
-            colors  = ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Text("Use", style = MaterialTheme.typography.labelLarge)
+        TextButton(onClick = onUse, colors = ButtonDefaults.textButtonColors(contentColor = NeonBright)) {
+            Text("USE", style = MaterialTheme.typography.labelLarge, letterSpacing = 1.sp)
         }
         IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Dismiss",
-                tint     = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
-            )
+            Icon(Icons.Default.Close, "Dismiss", tint = SpotMuted, modifier = Modifier.size(15.dp))
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// URL input
+// URL Input
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun UrlInputCard(url: String, enabled: Boolean, onChange: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun UrlInput(url: String, enabled: Boolean, onChange: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "VIDEO URL",
+            "PASTE LINK",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = SpotSub,
+            letterSpacing = 1.5.sp
         )
         OutlinedTextField(
-            value         = url,
-            onValueChange = onChange,
-            placeholder   = {
+            value           = url,
+            onValueChange   = onChange,
+            placeholder     = {
                 Text(
                     "https://youtube.com/watch?v=…",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    color = SpotMuted
                 )
             },
-            singleLine    = true,
-            enabled       = enabled,
+            singleLine      = true,
+            enabled         = enabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            shape         = RoundedCornerShape(14.dp),
-            colors        = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                disabledContainerColor  = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                cursorColor          = MaterialTheme.colorScheme.primary,
-                focusedTextColor     = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor   = MaterialTheme.colorScheme.onSurface,
+            shape           = RoundedCornerShape(16.dp),
+            colors          = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor      = Neon,
+                unfocusedBorderColor    = SpotLine,
+                focusedContainerColor   = SpotDark3,
+                unfocusedContainerColor = SpotDark2,
+                disabledContainerColor  = SpotDark2.copy(alpha = 0.5f),
+                cursorColor             = Neon,
+                focusedTextColor        = SpotWhite,
+                unfocusedTextColor      = SpotWhite,
+                disabledTextColor       = SpotMuted,
             ),
             textStyle = MaterialTheme.typography.bodyMedium,
             modifier  = Modifier.fillMaxWidth()
@@ -412,93 +459,76 @@ private fun UrlInputCard(url: String, enabled: Boolean, onChange: (String) -> Un
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Action row
+// Download Button — large, glowing, Spotify-style CTA
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ActionRow(
-    isWorking: Boolean,
-    hasUrl: Boolean,
-    onInfo: () -> Unit,
-    onDownload: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+private fun DownloadButton(isWorking: Boolean, hasUrl: Boolean, onDownload: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "btn_scale"
+    )
+
+    val active = !isWorking && hasUrl
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
     ) {
-        // Info button
-        Button(
-            onClick  = onInfo,
-            enabled  = !isWorking && hasUrl,
-            shape    = RoundedCornerShape(14.dp),
-            colors   = ButtonDefaults.buttonColors(
-                containerColor         = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor           = MaterialTheme.colorScheme.onSurfaceVariant,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                disabledContentColor   = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-            ),
-            modifier = Modifier
-                .weight(1f)
-                .height(52.dp)
-        ) {
-            Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Info", style = MaterialTheme.typography.labelLarge)
+        // Glow shadow behind button
+        if (active) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .blur(20.dp)
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Neon.copy(alpha = 0.5f))
+            )
         }
 
-        // Download button — gradient fill
-        Box(
-            modifier = Modifier
-                .weight(2f)
-                .height(52.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(
-                    if (!isWorking && hasUrl)
-                        Brush.linearGradient(listOf(Violet600, Violet500))
-                    else
-                        Brush.linearGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        )
-                ),
-            contentAlignment = Alignment.Center
+        Button(
+            onClick           = onDownload,
+            enabled           = active,
+            shape             = RoundedCornerShape(50.dp),
+            interactionSource = interactionSource,
+            colors            = ButtonDefaults.buttonColors(
+                containerColor         = if (active) Neon else SpotDark3,
+                contentColor           = SpotWhite,
+                disabledContainerColor = SpotDark3,
+                disabledContentColor   = SpotMuted
+            ),
+            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
+            modifier  = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
         ) {
-            Button(
-                onClick  = onDownload,
-                enabled  = !isWorking && hasUrl,
-                shape    = RoundedCornerShape(14.dp),
-                colors   = ButtonDefaults.buttonColors(
-                    containerColor         = Color.Transparent,
-                    contentColor           = Color.White,
-                    disabledContainerColor = Color.Transparent,
-                    disabledContentColor   = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                ),
-                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
-                modifier  = Modifier.fillMaxSize()
-            ) {
-                AnimatedContent(
-                    targetState = isWorking,
-                    transitionSpec = {
-                        fadeIn(tween(200)) togetherWith fadeOut(tween(150))
-                    },
-                    label = "download_label"
-                ) { working ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+            AnimatedContent(
+                targetState = isWorking,
+                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
+                label = "dl_btn"
+            ) { working ->
+                Row(
+                    verticalAlignment      = Alignment.CenterVertically,
+                    horizontalArrangement  = Arrangement.Center
+                ) {
+                    if (working) {
+                        // Animated dots
+                        val inf = rememberInfiniteTransition(label = "dots")
+                        val alpha by inf.animateFloat(
+                            initialValue = 0.3f, targetValue = 1f,
+                            animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
+                            label = "dot_alpha"
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            if (working) "Working…" else "Download",
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        Text("Downloading", style = MaterialTheme.typography.labelLarge, color = SpotWhite.copy(alpha = alpha))
+                    } else {
+                        Icon(Icons.Default.Download, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text("Download", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -507,227 +537,252 @@ private fun ActionRow(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Progress card
+// Info Button — ghost style
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ProgressCard(status: String) {
-    SurfaceCard {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // Pulsing dot
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-                Text(
-                    "Downloading",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            LinearProgressIndicator(
-                modifier  = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp)),
-                color          = MaterialTheme.colorScheme.primary,
-                trackColor     = MaterialTheme.colorScheme.outline,
-                strokeCap      = StrokeCap.Round
-            )
-            if (status.isNotBlank()) {
-                Text(
-                    status,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Title preview card
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun TitleCard(title: String) {
-    SurfaceCard {
-        Row(
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Info,
-                    contentDescription = null,
-                    tint     = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "VIDEO TITLE",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Error card
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun ErrorCard(message: String) {
-    Box(
-        modifier = Modifier
+private fun InfoButton(isWorking: Boolean, hasUrl: Boolean, onInfo: () -> Unit) {
+    Button(
+        onClick  = onInfo,
+        enabled  = !isWorking && hasUrl,
+        shape    = RoundedCornerShape(50.dp),
+        colors   = ButtonDefaults.buttonColors(
+            containerColor         = Color.Transparent,
+            contentColor           = SpotSub,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor   = SpotMuted.copy(alpha = 0.4f)
+        ),
+        border   = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (!isWorking && hasUrl) SpotLine else SpotLine.copy(alpha = 0.3f)
+        ),
+        elevation = ButtonDefaults.buttonElevation(0.dp),
+        modifier  = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.errorContainer)
-            .border(
-                1.dp,
-                MaterialTheme.colorScheme.error.copy(alpha = 0.3f),
-                RoundedCornerShape(14.dp)
-            )
-            .padding(16.dp)
+            .height(48.dp)
     ) {
-        Text(
-            message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer
-        )
+        Icon(Icons.Default.Info, null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Get Video Info", style = MaterialTheme.typography.labelLarge)
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Success / file card
+// Progress Section
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SuccessCard(filePath: String, context: Context) {
-    Box(
+private fun ProgressSection(status: String) {
+    val inf = rememberInfiniteTransition(label = "shimmer")
+    val shimmerX by inf.animateFloat(
+        initialValue = -1f, targetValue = 2f,
+        animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing)),
+        label = "shimmer_x"
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(
-                1.dp,
-                Success.copy(alpha = 0.35f),
-                RoundedCornerShape(16.dp)
-            )
-            .padding(16.dp)
+            .background(SpotDark2)
+            .border(1.dp, SpotLine, RoundedCornerShape(16.dp))
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Header row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Success.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Download,
-                        contentDescription = null,
-                        tint     = Success,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        "SAVED TO DOWNLOADS",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Success
-                    )
-                    Text(
-                        File(filePath).name,
-                        style    = MaterialTheme.typography.bodySmall,
-                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Divider
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Pulsing neon dot
+            val pulse = rememberInfiniteTransition(label = "pulse")
+            val dotScale by pulse.animateFloat(
+                initialValue = 0.8f, targetValue = 1.3f,
+                animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+                label = "dot"
+            )
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                    .size(10.dp)
+                    .scale(dotScale)
+                    .clip(CircleShape)
+                    .background(Neon)
             )
+            Text("Downloading…", style = MaterialTheme.typography.titleSmall, color = SpotWhite)
+        }
 
-            // Action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Shimmer progress bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(SpotDark4)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Neon.copy(alpha = 0.9f),
+                                NeonBright,
+                                Neon.copy(alpha = 0.9f),
+                                Color.Transparent
+                            ),
+                            start = Offset(shimmerX * 800f, 0f),
+                            end   = Offset(shimmerX * 800f + 400f, 0f)
+                        )
+                    )
+            )
+        }
+
+        if (status.isNotBlank()) {
+            Text(status, style = MaterialTheme.typography.bodySmall, color = SpotSub)
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Title Track Card — Spotify "track info" style
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun TitleTrackCard(title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(SpotDark2)
+            .border(1.dp, SpotLine, RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // Fake album art square
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    Brush.linearGradient(listOf(NeonDim, SpotDark4))
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.PlayArrow, null, tint = NeonBright, modifier = Modifier.size(26.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text("VIDEO FOUND", style = MaterialTheme.typography.labelMedium, color = Neon, letterSpacing = 1.sp)
+            Spacer(Modifier.height(3.dp))
+            Text(title, style = MaterialTheme.typography.titleMedium, color = SpotWhite, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Error Banner
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ErrorBanner(message: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text("✕", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleSmall)
+        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Downloaded Track Card — Spotify "saved track" style
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun DownloadedTrackCard(filePath: String, context: Context) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SpotDark2)
+            .border(1.dp, GreenSpot.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(listOf(GreenSpot.copy(alpha = 0.15f), Color.Transparent))
+                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(GreenSpot.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
             ) {
-                FileActionButton(
-                    icon    = Icons.Default.PlayArrow,
-                    label   = "Play",
-                    onClick = { playFile(context, filePath) },
-                    modifier = Modifier.weight(1f)
-                )
-                FileActionButton(
-                    icon    = Icons.Default.FolderOpen,
-                    label   = "Folder",
-                    onClick = { openDownloadsFolder(context) },
-                    modifier = Modifier.weight(1f)
-                )
-                FileActionButton(
-                    icon    = Icons.Default.Share,
-                    label   = "Share",
-                    onClick = { shareFile(context, filePath) },
-                    modifier = Modifier.weight(1f)
-                )
+                Icon(Icons.Default.Download, null, tint = GreenSpot, modifier = Modifier.size(26.dp))
             }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("SAVED", style = MaterialTheme.typography.labelMedium, color = GreenSpot, letterSpacing = 1.sp)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    File(filePath).name,
+                    style    = MaterialTheme.typography.titleSmall,
+                    color    = SpotWhite,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text("Downloads folder", style = MaterialTheme.typography.bodySmall, color = SpotSub)
+            }
+        }
+
+        // Divider
+        Box(Modifier.fillMaxWidth().height(1.dp).background(SpotLine))
+
+        // Action row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TrackActionChip(Icons.Default.PlayArrow, "Play",   { playFile(context, filePath) }, Modifier.weight(1f))
+            TrackActionChip(Icons.Default.FolderOpen, "Folder", { openDownloadsFolder(context) }, Modifier.weight(1f))
+            TrackActionChip(Icons.Default.Share,      "Share",  { shareFile(context, filePath) }, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun FileActionButton(
+private fun TrackActionChip(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Button(
-        onClick  = onClick,
-        shape    = RoundedCornerShape(10.dp),
-        colors   = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor   = MaterialTheme.colorScheme.onSurface
+        onClick   = onClick,
+        shape     = RoundedCornerShape(50.dp),
+        colors    = ButtonDefaults.buttonColors(
+            containerColor = SpotDark3,
+            contentColor   = SpotSub
         ),
         elevation = ButtonDefaults.buttonElevation(0.dp),
-        modifier  = modifier.height(44.dp)
+        modifier  = modifier.height(40.dp)
     ) {
-        Icon(icon, contentDescription = label, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(4.dp))
+        Icon(icon, label, modifier = Modifier.size(15.dp))
+        Spacer(Modifier.width(5.dp))
         Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }
@@ -737,69 +792,42 @@ private fun FileActionButton(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun Footer() {
+private fun FooterCredit() {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(32.dp)
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Created by AK",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            textAlign = TextAlign.Center
-        )
-        Text(
-            "ammarkamoona.2012@gmail.com",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared surface card wrapper
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SurfaceCard(content: @Composable () -> Unit) {
-    Card(
-        shape  = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Box(Modifier.padding(16.dp)) {
-            content()
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.width(24.dp).height(1.dp).background(SpotLine))
+            Spacer(Modifier.width(10.dp))
+            Text("AK", style = MaterialTheme.typography.labelSmall, color = SpotMuted, letterSpacing = 2.sp)
+            Spacer(Modifier.width(10.dp))
+            Box(Modifier.width(24.dp).height(1.dp).background(SpotLine))
         }
+        Text("ammarkamoona.2012@gmail.com", style = MaterialTheme.typography.labelSmall, color = SpotMuted.copy(alpha = 0.6f), textAlign = TextAlign.Center)
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Intent helpers (unchanged logic)
+// Intent helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 private fun playFile(context: Context, filePath: String) {
     val file = File(filePath)
     if (!file.exists()) return
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, "video/*")
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(intent, "Play with…"))
+    context.startActivity(
+        Intent.createChooser(
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "video/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, "Play with…"
+        )
+    )
 }
 
 private fun openDownloadsFolder(context: Context) {
@@ -810,11 +838,10 @@ private fun openDownloadsFolder(context: Context) {
         )
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    val fallback = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
-    try {
-        context.startActivity(intent)
-    } catch (e: Exception) {
-        try { context.startActivity(fallback) } catch (e2: Exception) { /* ignore */ }
+    try { context.startActivity(intent) }
+    catch (e: Exception) {
+        try { context.startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)) }
+        catch (e2: Exception) { /* ignore */ }
     }
 }
 
@@ -822,10 +849,13 @@ private fun shareFile(context: Context, filePath: String) {
     val file = File(filePath)
     if (!file.exists()) return
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "video/*"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(intent, "Share video"))
+    context.startActivity(
+        Intent.createChooser(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "video/*"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, "Share video"
+        )
+    )
 }

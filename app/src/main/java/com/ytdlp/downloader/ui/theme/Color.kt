@@ -2,34 +2,34 @@ package com.ytdlp.downloader.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── Brand ────────────────────────────────────────────────────────────────────
-val Violet100  = Color(0xFFF5F3FF)
-val Violet200  = Color(0xFFDDD6FE)
-val Violet400  = Color(0xFFA78BFA)
-val Violet500  = Color(0xFF8B5CF6)
-val Violet600  = Color(0xFF7C3AED)
-val Violet700  = Color(0xFF6D28D9)
-val Violet900  = Color(0xFF2E1065)
+// ── Brand accent ──────────────────────────────────────────────────────────────
+val Neon        = Color(0xFF9D5CFF)   // primary glow / accent
+val NeonBright  = Color(0xFFBF8FFF)   // lighter variant for text on dark
+val NeonDim     = Color(0xFF5B2EA6)   // pressed / disabled
+val NeonGlow    = Color(0x339D5CFF)   // translucent glow layer
 
-// ── Dark surface palette ──────────────────────────────────────────────────────
-val Dark950    = Color(0xFF0A0A0F)   // deepest background
-val Dark900    = Color(0xFF0F0F18)   // scaffold background
-val Dark800    = Color(0xFF16161F)   // card surface
-val Dark700    = Color(0xFF1E1E2E)   // elevated card / input bg
-val Dark600    = Color(0xFF2A2A3D)   // border / divider
-val Dark400    = Color(0xFF6B6B8A)   // muted text
-val Dark200    = Color(0xFFB0B0CC)   // secondary text
+// ── Spotify-style dark surfaces ───────────────────────────────────────────────
+val SpotBlack   = Color(0xFF0D0D0D)   // true background
+val SpotDark1   = Color(0xFF121212)   // scaffold
+val SpotDark2   = Color(0xFF181818)   // card base
+val SpotDark3   = Color(0xFF242424)   // elevated card
+val SpotDark4   = Color(0xFF2A2A2A)   // input / toggle bg
+val SpotLine    = Color(0xFF333333)   // dividers
+val SpotMuted   = Color(0xFF6A6A6A)   // placeholder / muted text
+val SpotSub     = Color(0xFFB3B3B3)   // secondary text (Spotify grey)
+val SpotWhite   = Color(0xFFFFFFFF)   // primary text
 
-// ── Light surface palette ─────────────────────────────────────────────────────
-val Light50    = Color(0xFFFAFAFF)
-val Light100   = Color(0xFFF0EFFF)
-val Light200   = Color(0xFFE4E2F8)
-val Light400   = Color(0xFF9090B0)
-val Light600   = Color(0xFF5A5A7A)
+// ── Light mode surfaces ───────────────────────────────────────────────────────
+val LightBg     = Color(0xFFF8F8F8)
+val LightCard   = Color(0xFFFFFFFF)
+val LightCard2  = Color(0xFFF0EEF8)
+val LightBorder = Color(0xFFE0DCF0)
+val LightMuted  = Color(0xFF8A8A9A)
+val LightSub    = Color(0xFF555566)
 
 // ── Semantic ──────────────────────────────────────────────────────────────────
-val Success    = Color(0xFF22C55E)
-val SuccessDim = Color(0xFF14532D)
-val ErrorRed   = Color(0xFFEF4444)
-val ErrorDim   = Color(0xFF450A0A)
-val Warning    = Color(0xFFF59E0B)
+val GreenSpot   = Color(0xFF1DB954)   // Spotify green — success
+val GreenDim    = Color(0xFF0A3D1F)
+val RedErr      = Color(0xFFE5534B)
+val RedDim      = Color(0xFF3D0A0A)
+val Amber       = Color(0xFFFFA500)
