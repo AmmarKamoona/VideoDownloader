@@ -1,5 +1,6 @@
 package com.ytdlp.downloader.ui
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytdlp.downloader.MainViewModel
 import java.io.File
@@ -199,7 +201,7 @@ fun DownloaderScreen(viewModel: MainViewModel) {
 private fun playFile(context: Context, filePath: String) {
     val file = File(filePath)
     if (!file.exists()) return
-    val uri = androidx.core.content.FileProvider.getUriForFile(
+    val uri = FileProvider.getUriForFile(
         context,
         "${context.packageName}.fileprovider",
         file
@@ -222,14 +224,14 @@ private fun openDownloadsFolder(context: Context) {
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     // Fallback: open the generic Downloads app
-    val fallback = Intent(android.provider.DownloadManager.ACTION_VIEW_DOWNLOADS)
+    val fallback = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
 
     try {
         context.startActivity(intent)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
         try {
             context.startActivity(fallback)
-        } catch (_: Exception) {
+        } catch (e2: Exception) {
             // Nothing to open — silently ignore
         }
     }
@@ -239,7 +241,7 @@ private fun openDownloadsFolder(context: Context) {
 private fun shareFile(context: Context, filePath: String) {
     val file = File(filePath)
     if (!file.exists()) return
-    val uri = androidx.core.content.FileProvider.getUriForFile(
+    val uri = FileProvider.getUriForFile(
         context,
         "${context.packageName}.fileprovider",
         file
