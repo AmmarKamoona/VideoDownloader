@@ -37,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Switch
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
@@ -90,7 +91,11 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DownloaderScreen(viewModel: MainViewModel) {
+fun DownloaderScreen(
+    viewModel: MainViewModel,
+    isBubbleEnabled: Boolean = false,
+    onToggleBubble: () -> Unit = {}
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context: Context = LocalContext.current
 
@@ -110,7 +115,7 @@ fun DownloaderScreen(viewModel: MainViewModel) {
                 .verticalScroll(rememberScrollState())
         ) {
             // ── Hero header ───────────────────────────────────────────────────
-            AppHeader()
+            AppHeader(isBubbleEnabled = isBubbleEnabled, onToggleBubble = onToggleBubble)
 
             // ── Content ───────────────────────────────────────────────────────
             Column(
@@ -203,7 +208,7 @@ fun DownloaderScreen(viewModel: MainViewModel) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun AppHeader() {
+private fun AppHeader(isBubbleEnabled: Boolean, onToggleBubble: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -248,6 +253,51 @@ private fun AppHeader() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Spacer(Modifier.height(20.dp))
+
+            // Floating bubble toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isBubbleEnabled) Violet600.copy(alpha = 0.2f)
+                            else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("⬇", style = MaterialTheme.typography.bodyMedium)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Floating Bubble",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        if (isBubbleEnabled)
+                            "Shows a bubble when you copy a video link"
+                        else
+                            "Tap to enable — detects links in other apps",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked         = isBubbleEnabled,
+                    onCheckedChange = { onToggleBubble() }
+                )
+            }
         }
     }
 }

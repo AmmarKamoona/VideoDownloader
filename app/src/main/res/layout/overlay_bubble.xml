@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Floating overlay bubble shown over other apps when a video URL is detected.
+  Styled to match the Legend Video Downloader brand (violet + dark).
+-->
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="28dp"
+    app:cardElevation="12dp"
+    app:cardBackgroundColor="#CC1E1E2E"
+    android:layout_margin="8dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="6dp">
+
+        <!-- Download icon circle -->
+        <FrameLayout
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@drawable/bubble_icon_bg">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="⬇"
+                android:textSize="13sp"
+                android:textColor="#FFFFFF" />
+        </FrameLayout>
+
+        <!-- Label -->
+        <TextView
+            android:id="@+id/bubble_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="↓ youtube.com"
+            android:textColor="#EDE9FE"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxWidth="160dp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Close button -->
+        <ImageButton
+            android:id="@+id/bubble_close"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:tint="#9090B0"
+            android:contentDescription="Dismiss" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

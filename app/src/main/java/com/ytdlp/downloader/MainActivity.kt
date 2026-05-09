@@ -3,7 +3,10 @@ package com.ytdlp.downloader
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -27,7 +30,11 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    DownloaderScreen(viewModel)
+                    DownloaderScreen(
+                        viewModel         = viewModel,
+                        isBubbleEnabled   = Settings.canDrawOverlays(this),
+                        onToggleBubble    = { toggleBubble() }
+                    )
                 }
             }
         }
@@ -44,11 +51,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
+        // Bubble tapped in another app → URL passed directly
+        if (intent?.action == ClipboardService.ACTION_OPEN_URL) {
+            val url = intent.getStringExtra(ClipboardService.EXTRA_URL)?.trim()
+            if (!url.isNullOrBlank()) {
+                viewModel.setUrl(url)
+                viewModel.onClipboardUrlDetected(url)
+            }
+            return
+        }
+        // Shared from another app via ACTION_SEND
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
             if (!sharedText.isNullOrBlank()) {
                 viewModel.setUrl(sharedText)
-                // If it looks like a video URL, also trigger the quick-download banner
                 if (looksLikeVideoUrl(sharedText)) {
                     viewModel.onClipboardUrlDetected(sharedText)
                 }
@@ -64,14 +80,23 @@ class MainActivity : ComponentActivity() {
             ?.toString()
             ?.trim()
             ?: return
-
         if (looksLikeVideoUrl(text)) {
             viewModel.onClipboardUrlDetected(text)
         }
     }
 
+    private fun toggleBubble() {
+        if (Settings.canDrawOverlays(this)) {
+            // Already granted — stop the service (toggle off)
+            stopService(Intent(this, ClipboardService::class.java))
+        } else {
+            // Need permission — open the permission screen
+            startActivity(Intent(this, OverlayPermissionActivity::class.java))
+        }
+    }
+
     companion object {
-        private val VIDEO_HOSTS = listOf(
+        val VIDEO_HOSTS = listOf(
             "youtube.com", "youtu.be",
             "twitter.com", "x.com",
             "instagram.com",
