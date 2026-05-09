@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -21,7 +21,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'          # built-in Gradle cache — no separate setup-gradle needed
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -31,8 +30,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Generate Gradle wrapper (if missing)
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 9.4.1 --distribution-type bin
+          fi
+          chmod +x gradlew
 
       - name: Cache Chaquopy artifacts
         uses: actions/cache@v4
@@ -41,34 +47,29 @@ jobs:
             ~/.gradle/caches/chaquopy
             app/build/python
           key: chaquopy-${{ hashFiles('app/build.gradle.kts', 'app/src/main/python/**') }}
-          restore-keys: chaquopy-
+          restore-keys: |
+            chaquopy-
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1 | tail -200
 
-      - name: Verify APK exists
+      - name: Get APK info
+        id: apk_info
         run: |
-          APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
-          if [ -z "$APK" ]; then
-            echo "ERROR: No APK found after build"
-            exit 1
-          fi
-          echo "APK_PATH=$APK" >> $GITHUB_ENV
-          SIZE=$(du -h "$APK" | cut -f1)
-          echo "APK_SIZE=$SIZE" >> $GITHUB_ENV
-          echo "## ✅ APK built successfully" >> $GITHUB_STEP_SUMMARY
-          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| File  | $(basename $APK) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Size  | $SIZE |" >> $GITHUB_STEP_SUMMARY
+          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
+          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+          echo "## APK built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- Path: $APK_PATH" >> $GITHUB_STEP_SUMMARY
+          echo "- Size: $APK_SIZE" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: legend-video-downloader-debug
-          path: ${{ env.APK_PATH }}
+          name: yt-downloader-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
-          if-no-files-found: error   # fail loudly if APK is missing
 
       - name: Create release on tag
         if: startsWith(github.ref, 'refs/tags/v')
