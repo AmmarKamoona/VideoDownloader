@@ -86,7 +86,7 @@ fun HomeScreen(
     onToggleBubble: () -> Unit,
     onViewAllDownloads: () -> Unit
 ) {
-    val state by viewModel.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val downloadDir = remember {
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -188,12 +188,6 @@ fun HomeScreen(
         Spacer(Modifier.height(100.dp))
     }
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-@Composable
-private fun MainViewModel.collectAsStateWithLifecycle() =
-    state.collectAsStateWithLifecycle().value
 
 // ── URL Input ─────────────────────────────────────────────────────────────────
 
@@ -484,7 +478,6 @@ private fun RecentDownloadsSection(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(

@@ -32,8 +32,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.ytdlp.downloader.ui.theme.Neon
-import com.ytdlp.downloader.ui.theme.NeonBright
+import com.ytdlp.downloader.ui.theme.LgPrimary
+import com.ytdlp.downloader.ui.theme.LgPrimaryContainer
 import com.ytdlp.downloader.ui.theme.YtDownloaderTheme
 
 /**
@@ -109,7 +109,7 @@ private fun PermissionScreen(onAllow: () -> Unit, onSkip: () -> Unit) {
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(Neon, NeonBright))),
+                    .background(Brush.linearGradient(listOf(LgPrimaryContainer, LgPrimary))),
                 contentAlignment = Alignment.Center
             ) {
                 Text("⬇", style = MaterialTheme.typography.displaySmall, color = Color.White)
