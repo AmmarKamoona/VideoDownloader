@@ -247,7 +247,13 @@ fun SettingsScreen(
                     .clip(RoundedCornerShape(12.dp))
                     .background(LgPrimaryContainer)
                     .clickable {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://paypal.me"))
+                        // PayPal donate form keyed to the email address.
+                        // Works for any verified PayPal account — no paypal.me handle required.
+                        val donateUrl = "https://www.paypal.com/donate?" +
+                            "business=ammarkamoona.2012%40gmail.com" +
+                            "&item_name=Legend+Video+Downloader" +
+                            "&currency_code=USD"
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(donateUrl))
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         context.startActivity(intent)
                     }
