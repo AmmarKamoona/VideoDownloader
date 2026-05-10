@@ -2,36 +2,50 @@ package com.ytdlp.downloader.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── Brand accent ──────────────────────────────────────────────────────────────
-val Neon        = Color(0xFF9D5CFF)   // primary glow / accent
-val NeonBright  = Color(0xFFBF8FFF)   // lighter variant for text on dark
-val NeonDim     = Color(0xFF5B2EA6)   // pressed / disabled
-val NeonGlow    = Color(0x339D5CFF)   // translucent glow layer
+// ── Legend Design System — extracted from Stitch HTML ────────────────────────
+val LgBackground          = Color(0xFF0C1322)
+val LgSurface             = Color(0xFF0C1322)
+val LgSurfaceContainer    = Color(0xFF191F2F)
+val LgSurfaceContainerLow = Color(0xFF141B2B)
+val LgSurfaceContainerHigh= Color(0xFF232A3A)
+val LgSurfaceContainerHighest = Color(0xFF2E3545)
+val LgSurfaceBright       = Color(0xFF323949)
+val LgSurfaceVariant      = Color(0xFF2E3545)
 
-// ── Spotify-style dark surfaces ───────────────────────────────────────────────
-val SpotBlack   = Color(0xFF0D0D0D)   // true background
-val SpotDark1   = Color(0xFF121212)   // scaffold
-val SpotDark2   = Color(0xFF181818)   // card base
-val SpotDark3   = Color(0xFF242424)   // elevated card
-val SpotDark4   = Color(0xFF2A2A2A)   // input / toggle bg
-val SpotLine    = Color(0xFF333333)   // dividers
-val SpotMuted   = Color(0xFF6A6A6A)   // placeholder / muted text
-val SpotSub     = Color(0xFFB3B3B3)   // secondary text (Spotify grey)
-val SpotWhite   = Color(0xFFFFFFFF)   // primary text
+val LgPrimary             = Color(0xFFB4C5FF)
+val LgPrimaryContainer    = Color(0xFF2563EB)
+val LgOnPrimary           = Color(0xFF002A78)
+val LgOnPrimaryContainer  = Color(0xFFEEEFFF)
+val LgPrimaryFixedDim     = Color(0xFFB4C5FF)
 
-// ── Light mode surfaces ───────────────────────────────────────────────────────
-val LightBg     = Color(0xFFF8F8F8)
-val LightCard   = Color(0xFFFFFFFF)
-val LightCard2  = Color(0xFFF0EEF8)
-val LightBorder = Color(0xFFE0DCF0)
-val LightMuted  = Color(0xFF8A8A9A)
-val LightSub    = Color(0xFF555566)
+val LgSecondary           = Color(0xFF4EDEA3)
+val LgSecondaryContainer  = Color(0xFF00A572)
+val LgOnSecondary         = Color(0xFF003824)
+val LgOnSecondaryContainer= Color(0xFF00311F)
 
-// ── Semantic ──────────────────────────────────────────────────────────────────
-val GreenSpot   = Color(0xFF1DB954)   // Spotify green — success
-val GreenDim    = Color(0xFF0A3D1F)
-val RedErr      = Color(0xFFE5534B)
-val RedDim      = Color(0xFF3D0A0A)
-val Amber       = Color(0xFFFFA500)
-val Gold        = Color(0xFFFFD700)   // creator credit
-val GoldDim     = Color(0xFFB8960C)   // divider lines
+val LgTertiary            = Color(0xFFFFB95F)
+val LgTertiaryContainer   = Color(0xFF996100)
+
+val LgOnBackground        = Color(0xFFDCE2F7)
+val LgOnSurface           = Color(0xFFDCE2F7)
+val LgOnSurfaceVariant    = Color(0xFFC3C6D7)
+val LgOutline             = Color(0xFF8D90A0)
+val LgOutlineVariant      = Color(0xFF434655)
+
+val LgError               = Color(0xFFFFB4AB)
+val LgErrorContainer      = Color(0xFF93000A)
+val LgOnError             = Color(0xFF690005)
+val LgOnErrorContainer    = Color(0xFFFFDAD6)
+
+val LgInverseSurface      = Color(0xFFDCE2F7)
+val LgInverseOnSurface    = Color(0xFF293040)
+
+// Platform accent colors for quick-access grid
+val YoutubeRed   = Color(0xFFFF4444)
+val InstaPink    = Color(0xFFEC4899)
+val TikTokWhite  = Color(0xFFEEEFFF)
+val FacebookBlue = Color(0xFF3B82F6)
+
+// Gold for creator credit
+val Gold    = Color(0xFFFFD700)
+val GoldDim = Color(0xFFB8960C)
