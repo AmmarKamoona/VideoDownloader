@@ -51,11 +51,7 @@ jobs:
             chaquopy-
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
-
-      - name: Show Kotlin errors if build failed
-        if: failure()
-        run: grep -E "^e: |error:" build.log | head -50 || true
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Get APK info
         id: apk_info
