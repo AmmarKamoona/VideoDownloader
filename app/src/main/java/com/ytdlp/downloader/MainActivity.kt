@@ -3,7 +3,6 @@ package com.ytdlp.downloader
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -13,6 +12,9 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.ytdlp.downloader.ui.DownloaderScreen
 import com.ytdlp.downloader.ui.theme.YtDownloaderTheme
@@ -20,9 +22,16 @@ import com.ytdlp.downloader.ui.theme.YtDownloaderTheme
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
+    /**
+     * Reactive Compose state for the bubble toggle.
+     * Plain Kotlin booleans don't trigger recomposition — this one does.
+     */
+    private var bubbleEnabled by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIncomingIntent(intent)
+        refreshBubbleState()
 
         setContent {
             YtDownloaderTheme {
@@ -31,9 +40,9 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     DownloaderScreen(
-                        viewModel         = viewModel,
-                        isBubbleEnabled   = Settings.canDrawOverlays(this) && isServiceRunning(),
-                        onToggleBubble    = { toggleBubble() }
+                        viewModel       = viewModel,
+                        isBubbleEnabled = bubbleEnabled,
+                        onToggleBubble  = { toggleBubble() }
                     )
                 }
             }
@@ -42,6 +51,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // User may have granted permission in Settings or stopped the service
+        // from the notification — re-sync the toggle state every time.
+        refreshBubbleState()
+        // If permission was just granted, auto-start the service so the switch
+        // visually matches the user's intent without a second tap.
+        if (Settings.canDrawOverlays(this) && !isServiceRunning()) {
+            startBubbleService()
+            refreshBubbleState()
+        }
         checkClipboardForUrl()
     }
 
@@ -50,8 +68,47 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
+    // ── Toggle logic ──────────────────────────────────────────────────────────
+
+    private fun toggleBubble() {
+        if (!Settings.canDrawOverlays(this)) {
+            // Need permission — open the system "Draw over other apps" page.
+            // onResume will start the service automatically when the user returns.
+            startActivity(Intent(this, OverlayPermissionActivity::class.java))
+            return
+        }
+        // Permission granted — flip the service on or off
+        if (isServiceRunning()) {
+            stopService(Intent(this, ClipboardService::class.java))
+        } else {
+            startBubbleService()
+        }
+        refreshBubbleState()
+    }
+
+    private fun startBubbleService() {
+        val serviceIntent = Intent(this, ClipboardService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+    }
+
+    private fun refreshBubbleState() {
+        bubbleEnabled = Settings.canDrawOverlays(this) && isServiceRunning()
+    }
+
+    private fun isServiceRunning(): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        @Suppress("DEPRECATION")
+        return manager.getRunningServices(Int.MAX_VALUE)
+            .any { it.service.className == ClipboardService::class.java.name }
+    }
+
+    // ── Intent handling ───────────────────────────────────────────────────────
+
     private fun handleIncomingIntent(intent: Intent?) {
-        // Bubble tapped in another app → URL passed directly
         if (intent?.action == ClipboardService.ACTION_OPEN_URL) {
             val url = intent.getStringExtra(ClipboardService.EXTRA_URL)?.trim()
             if (!url.isNullOrBlank()) {
@@ -60,7 +117,6 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        // Shared from another app via ACTION_SEND
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
             if (!sharedText.isNullOrBlank()) {
@@ -83,32 +139,6 @@ class MainActivity : ComponentActivity() {
         if (looksLikeVideoUrl(text)) {
             viewModel.onClipboardUrlDetected(text)
         }
-    }
-
-    private fun toggleBubble() {
-        if (Settings.canDrawOverlays(this)) {
-            // Permission granted — toggle the service on/off
-            val serviceIntent = Intent(this, ClipboardService::class.java)
-            if (isServiceRunning()) {
-                stopService(serviceIntent)
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(serviceIntent)
-                } else {
-                    startService(serviceIntent)
-                }
-            }
-        } else {
-            // Need permission first
-            startActivity(Intent(this, OverlayPermissionActivity::class.java))
-        }
-    }
-
-    private fun isServiceRunning(): Boolean {
-        val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        @Suppress("DEPRECATION")
-        return manager.getRunningServices(Int.MAX_VALUE)
-            .any { it.service.className == ClipboardService::class.java.name }
     }
 
     companion object {
