@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -66,8 +68,8 @@ class MainActivity : ComponentActivity() {
         checkClipboardForUrl()
     }
 
-    private fun downloadDir(): String = android.os.Environment
-        .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+    private fun downloadDir(): String = Environment
+        .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         .apply { mkdirs() }
         .absolutePath
 
@@ -116,23 +118,78 @@ class MainActivity : ComponentActivity() {
 
     // ── Intent handling ───────────────────────────────────────────────────────
 
+    /**
+     * Routes incoming intents to the right handler.
+     *
+     * Supported entry points:
+     *  1. ACTION_OPEN_URL — bubble tapped from another app
+     *  2. ACTION_SEND with text/plain — Share Sheet (YouTube, TikTok, Insta, etc.)
+     *  3. ACTION_VIEW with http(s) URI — user tapped a video link in a browser/email
+     *  4. Default launcher — no action needed
+     */
     private fun handleIncomingIntent(intent: Intent?) {
-        if (intent?.action == ClipboardService.ACTION_OPEN_URL) {
-            val url = intent.getStringExtra(ClipboardService.EXTRA_URL)?.trim()
-            if (!url.isNullOrBlank()) {
-                viewModel.setUrl(url)
-                viewModel.onClipboardUrlDetected(url)
+        if (intent == null) return
+
+        when (intent.action) {
+            ClipboardService.ACTION_OPEN_URL -> {
+                val url = intent.getStringExtra(ClipboardService.EXTRA_URL)
+                applyIncomingUrl(url, fromShare = false)
             }
+            Intent.ACTION_SEND -> {
+                if (intent.type != "text/plain") {
+                    Toast.makeText(this, "Only text links are supported", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                // Try EXTRA_TEXT first (typical), then EXTRA_SUBJECT as a fallback
+                val raw = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)
+                applyIncomingUrl(raw, fromShare = true)
+            }
+            Intent.ACTION_VIEW -> {
+                // User tapped a video URL in a browser, email, etc.
+                val raw = intent.dataString
+                applyIncomingUrl(raw, fromShare = true)
+            }
+        }
+    }
+
+    /**
+     * Validate, clean, and apply an incoming URL.
+     * Auto-triggers fetchInfo() so the user sees the title immediately
+     * without needing to tap Info first.
+     */
+    private fun applyIncomingUrl(rawText: String?, fromShare: Boolean) {
+        if (rawText.isNullOrBlank()) {
+            if (fromShare) Toast.makeText(this, "No link found in shared content", Toast.LENGTH_SHORT).show()
             return
         }
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
-            if (!sharedText.isNullOrBlank()) {
-                viewModel.setUrl(sharedText)
-                if (looksLikeVideoUrl(sharedText)) {
-                    viewModel.onClipboardUrlDetected(sharedText)
-                }
+
+        val url = UrlExtractor.extract(rawText)
+        if (url == null) {
+            if (fromShare) Toast.makeText(this, "No URL found in shared text", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!UrlExtractor.isSupportedVideoUrl(url)) {
+            if (fromShare) {
+                Toast.makeText(
+                    this,
+                    "Unsupported site. Try YouTube, TikTok, Instagram, or another supported platform.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+            // Still fill the field so the user can manually try
+            viewModel.setUrl(url)
+            return
+        }
+
+        // Valid supported URL — set it, surface the banner, and auto-fetch the title
+        viewModel.setUrl(url)
+        viewModel.onClipboardUrlDetected(url)
+        viewModel.fetchInfo()
+
+        if (fromShare) {
+            Toast.makeText(this, "Link received — fetching info…", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -142,30 +199,13 @@ class MainActivity : ComponentActivity() {
             ?.getItemAt(0)
             ?.coerceToText(this)
             ?.toString()
-            ?.trim()
             ?: return
-        if (looksLikeVideoUrl(text)) {
-            viewModel.onClipboardUrlDetected(text)
-        }
+        val url = UrlExtractor.extractAndValidate(text) ?: return
+        viewModel.onClipboardUrlDetected(url)
     }
 
     companion object {
-        val VIDEO_HOSTS = listOf(
-            "youtube.com", "youtu.be",
-            "twitter.com", "x.com",
-            "instagram.com",
-            "tiktok.com",
-            "facebook.com", "fb.watch",
-            "vimeo.com",
-            "dailymotion.com",
-            "twitch.tv",
-            "reddit.com",
-            "bilibili.com"
-        )
-
-        fun looksLikeVideoUrl(text: String): Boolean {
-            if (!text.startsWith("http://") && !text.startsWith("https://")) return false
-            return VIDEO_HOSTS.any { host -> text.contains(host) }
-        }
+        /** Kept for backwards compatibility. Real list lives in [UrlExtractor]. */
+        fun looksLikeVideoUrl(text: String): Boolean = UrlExtractor.isSupportedVideoUrl(text)
     }
 }
