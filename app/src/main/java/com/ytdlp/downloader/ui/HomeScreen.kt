@@ -124,7 +124,11 @@ fun HomeScreen(
         ) {
             DetectionBanner(
                 url       = state.clipboardUrl ?: "",
-                onUse     = { viewModel.useClipboardUrl() },
+                onUse     = {
+                    // "Download Now" — populate URL and immediately start the download
+                    viewModel.useClipboardUrl()
+                    viewModel.download(downloadDir)
+                },
                 onDismiss = { viewModel.dismissClipboardBanner() }
             )
         }
@@ -509,17 +513,22 @@ fun CompletedDownloadRow(item: DownloadItem, context: Context, onRemove: () -> U
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Thumbnail placeholder
+        // Tap thumbnail to play the video
         Box(
             modifier = Modifier
                 .size(width = 64.dp, height = 48.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(LgSurfaceContainerHighest),
+                .background(LgSurfaceContainerHighest)
+                .clickable { playFile(context, item.filePath) },
             contentAlignment = Alignment.Center
         ) {
             Text("▶", color = LgPrimary, fontSize = 18.sp)
         }
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { playFile(context, item.filePath) }
+        ) {
             Text(
                 item.title,
                 style    = MaterialTheme.typography.bodyMedium,
@@ -531,7 +540,6 @@ fun CompletedDownloadRow(item: DownloadItem, context: Context, onRemove: () -> U
                 Text(item.sizeLabel, style = MaterialTheme.typography.labelSmall, color = LgOutline)
             }
             Spacer(Modifier.height(6.dp))
-            // Completed progress bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -591,6 +599,21 @@ private fun FooterSection() {
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
+
+private fun playFile(context: Context, filePath: String) {
+    val file = File(filePath)
+    if (!file.exists()) return
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "video/*")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(Intent.createChooser(intent, "Play with…"))
+    } catch (e: Exception) {
+        // No video player installed — silently ignore
+    }
+}
 
 private fun shareFile(context: Context, filePath: String) {
     val file = File(filePath)
