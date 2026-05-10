@@ -60,8 +60,16 @@ class MainActivity : ComponentActivity() {
             startBubbleService()
             refreshBubbleState()
         }
+        // Re-scan the Downloads folder so previously-downloaded files appear
+        // in the Downloads tab even after the app process was killed.
+        viewModel.refreshDownloads(downloadDir())
         checkClipboardForUrl()
     }
+
+    private fun downloadDir(): String = android.os.Environment
+        .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+        .apply { mkdirs() }
+        .absolutePath
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

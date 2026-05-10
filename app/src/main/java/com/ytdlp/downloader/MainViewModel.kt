@@ -84,21 +84,13 @@ class MainViewModel : ViewModel() {
                     val py = Python.getInstance()
                     py.getModule("ytdlp_wrapper").callAttr("download", url, outputDir).toString()
                 }
-                val file = File(resultPath)
-                val sizeLabel = formatSize(file.length())
-                val item = DownloadItem(
-                    id        = resultPath,
-                    title     = file.name,
-                    filePath  = resultPath,
-                    sizeLabel = sizeLabel,
-                    isCompleted = true
-                )
                 _state.value = _state.value.copy(
                     isWorking = false,
                     status    = "Done",
-                    lastFile  = resultPath,
-                    downloads = listOf(item) + _state.value.downloads
+                    lastFile  = resultPath
                 )
+                // Re-scan the directory so the new file appears in Downloads tab
+                refreshDownloads(outputDir)
             } catch (t: Throwable) {
                 _state.value = _state.value.copy(
                     isWorking = false, status = "",
@@ -109,9 +101,33 @@ class MainViewModel : ViewModel() {
     }
 
     fun removeDownload(id: String) {
+        // Delete from disk so it doesn't reappear on next refresh
+        try { File(id).delete() } catch (e: Exception) { /* ignore */ }
         _state.value = _state.value.copy(
             downloads = _state.value.downloads.filter { it.id != id }
         )
+    }
+
+    /**
+     * Scan the given directory for video files and rebuild the downloads list.
+     * Called on app start and whenever MainActivity resumes so previously-downloaded
+     * files survive process death.
+     */
+    fun refreshDownloads(downloadDir: String) {
+        val dir = File(downloadDir)
+        if (!dir.exists() || !dir.isDirectory) return
+        val items = dir.listFiles { file ->
+            file.isFile && file.extension.lowercase() in VIDEO_EXTENSIONS
+        }?.sortedByDescending { it.lastModified() }?.map { file ->
+            DownloadItem(
+                id        = file.absolutePath,
+                title     = file.name,
+                filePath  = file.absolutePath,
+                sizeLabel = formatSize(file.length()),
+                isCompleted = true
+            )
+        } ?: emptyList()
+        _state.value = _state.value.copy(downloads = items)
     }
 
     fun clearError() {
@@ -141,5 +157,11 @@ class MainViewModel : ViewModel() {
         bytes < 1024 * 1024 -> "${bytes / 1024} KB"
         bytes < 1024L * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024))} MB"
         else -> "${"%.2f".format(bytes / (1024.0 * 1024 * 1024))} GB"
+    }
+
+    companion object {
+        private val VIDEO_EXTENSIONS = setOf(
+            "mp4", "webm", "mkv", "mov", "m4v", "avi", "flv", "3gp", "ts"
+        )
     }
 }
