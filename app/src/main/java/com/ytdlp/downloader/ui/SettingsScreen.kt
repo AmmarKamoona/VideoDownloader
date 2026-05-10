@@ -1,5 +1,6 @@
 package com.ytdlp.downloader.ui
 
+import android.app.DownloadManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
@@ -28,8 +29,6 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -149,9 +148,15 @@ fun SettingsScreen(
             PermissionRow(
                 icon    = Icons.Default.NotificationsActive,
                 title   = "Notification access",
-                subtitle = "Track progress from status bar",
+                subtitle = "Tap to manage in system settings",
                 enabled = true,
-                onToggle = {}
+                onToggle = {
+                    val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try { context.startActivity(intent) } catch (e: Exception) { /* ignore */ }
+                }
             )
         }
 
@@ -171,11 +176,11 @@ fun SettingsScreen(
                     .clip(RoundedCornerShape(12.dp))
                     .background(LgSurfaceContainer)
             ) {
-                // Download location
+                // Download location — tap to open in file manager
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { }
+                        .clickable { openDownloadsFolder(context) }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -186,28 +191,6 @@ fun SettingsScreen(
                         Text(downloadsPath, style = MaterialTheme.typography.labelSmall, color = LgPrimary, maxLines = 1)
                     }
                     Icon(Icons.Default.ChevronRight, null, tint = LgOnSurfaceVariant, modifier = Modifier.size(18.dp))
-                }
-
-                Box(Modifier.fillMaxWidth().height(1.dp).background(LgOutlineVariant.copy(alpha = 0.2f)))
-
-                // Auto-resume toggle
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text("↺", color = LgOnSurfaceVariant, fontSize = 18.sp)
-                    Text("Auto-resume on Wi-Fi", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = true,
-                        onCheckedChange = {},
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onSurface,
-                            checkedTrackColor = LgPrimaryContainer
-                        )
-                    )
                 }
             }
         }
@@ -327,5 +310,28 @@ private fun PermissionRow(
                     .background(if (enabled) LgOnPrimaryContainer else LgOutline)
             )
         }
+    }
+}
+
+
+/**
+ * Open the public Downloads folder in the user's file manager.
+ * Tries the Documents content URI first, falls back to the system
+ * Downloads UI if no file manager handles the URI.
+ */
+private fun openDownloadsFolder(context: android.content.Context) {
+    val docsUri = Uri.parse(
+        "content://com.android.externalstorage.documents/document/primary%3ADownload"
+    )
+    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(docsUri, "vnd.android.document/directory")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    val fallback = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+
+    try { context.startActivity(viewIntent) }
+    catch (e: Exception) {
+        try { context.startActivity(fallback) }
+        catch (e2: Exception) { /* no compatible app */ }
     }
 }

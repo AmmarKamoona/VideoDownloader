@@ -1,9 +1,12 @@
 package com.ytdlp.downloader.ui
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,10 +85,12 @@ fun DownloadsScreen(viewModel: MainViewModel) {
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (active) LgPrimaryContainer else androidx.compose.ui.graphics.Color.Transparent)
-                        .then(
-                            Modifier.padding(vertical = 10.dp)
-                        ),
+                        .background(
+                            if (active) LgPrimaryContainer
+                            else androidx.compose.ui.graphics.Color.Transparent
+                        )
+                        .clickable { selectedTab = index }
+                        .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -112,12 +117,31 @@ fun DownloadsScreen(viewModel: MainViewModel) {
             if (state.downloads.isEmpty()) {
                 EmptyState("No completed downloads yet")
             } else {
-                Text(
-                    "COMPLETED DOWNLOADS",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = LgOnSurfaceVariant,
-                    letterSpacing = 1.sp
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "COMPLETED DOWNLOADS",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = LgOnSurfaceVariant,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    // Open Downloads folder in system file manager
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(LgSurfaceContainer)
+                            .clickable { openDownloadsFolder(context) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("📁", fontSize = 13.sp)
+                        Text("Open folder", style = MaterialTheme.typography.labelSmall, color = LgPrimary)
+                    }
+                }
                 state.downloads.forEach { item ->
                     CompletedItemCard(item = item, context = context, onRemove = { viewModel.removeDownload(item.id) })
                 }
@@ -178,14 +202,20 @@ private fun CompletedItemCard(item: DownloadItem, context: Context, onRemove: ()
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Tap thumbnail to play the video
         Box(
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(LgSurfaceContainerHighest),
+                .background(LgSurfaceContainerHighest)
+                .clickable { playFile(context, item.filePath) },
             contentAlignment = Alignment.Center
         ) { Text("▶", color = LgPrimary, fontSize = 20.sp) }
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { playFile(context, item.filePath) }
+        ) {
             Text(
                 item.title,
                 style    = MaterialTheme.typography.bodyLarge,
@@ -238,4 +268,38 @@ private fun shareFile(context: Context, filePath: String) {
             }, "Share video"
         )
     )
+}
+
+private fun playFile(context: Context, filePath: String) {
+    val file = File(filePath)
+    if (!file.exists()) return
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "video/*")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try { context.startActivity(Intent.createChooser(intent, "Play with…")) }
+    catch (e: Exception) { /* no player installed */ }
+}
+
+/**
+ * Open the public Downloads folder in the user's file manager.
+ * Tries the Documents content URI first (works on most modern devices),
+ * then falls back to the system Downloads UI.
+ */
+private fun openDownloadsFolder(context: Context) {
+    val docsUri = Uri.parse(
+        "content://com.android.externalstorage.documents/document/primary%3ADownload"
+    )
+    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(docsUri, "vnd.android.document/directory")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    val fallback = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+
+    try { context.startActivity(viewIntent) }
+    catch (e: Exception) {
+        try { context.startActivity(fallback) }
+        catch (e2: Exception) { /* no compatible app */ }
+    }
 }

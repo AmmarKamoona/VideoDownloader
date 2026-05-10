@@ -1,5 +1,9 @@
 ﻿package com.ytdlp.downloader.ui
 
+import android.app.DownloadManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ytdlp.downloader.MainViewModel
@@ -88,6 +93,7 @@ fun DownloaderScreen(
 
 @Composable
 private fun LegendTopBar() {
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -108,15 +114,31 @@ private fun LegendTopBar() {
                 color = LgPrimary
             )
         }
+        // Folder icon — opens the public Downloads folder in the file manager
         Box(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .clickable { },
+                .clickable { openDownloadsFolderTop(context) },
             contentAlignment = Alignment.Center
         ) {
-            Text("☁", fontSize = 18.sp, color = LgOnSurfaceVariant)
+            Text("📁", fontSize = 18.sp, color = LgOnSurfaceVariant)
         }
+    }
+}
+
+private fun openDownloadsFolderTop(context: Context) {
+    val docsUri = Uri.parse(
+        "content://com.android.externalstorage.documents/document/primary%3ADownload"
+    )
+    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(docsUri, "vnd.android.document/directory")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    val fallback = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+    try { context.startActivity(viewIntent) }
+    catch (e: Exception) {
+        try { context.startActivity(fallback) } catch (e2: Exception) { /* ignore */ }
     }
 }
 

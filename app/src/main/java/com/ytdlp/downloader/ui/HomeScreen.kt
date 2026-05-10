@@ -173,7 +173,7 @@ fun HomeScreen(
 
         // Quick access grid
         QuickAccessGrid(onPlatformClick = { host ->
-            viewModel.setUrl("https://$host/")
+            openPlatform(context, host)
         })
 
         // Recent downloads
@@ -599,6 +599,38 @@ private fun FooterSection() {
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Open a social platform — try the native app first, fall back to the
+ * web URL if the app isn't installed.
+ */
+private fun openPlatform(context: Context, host: String) {
+    val packageName = when {
+        host.contains("youtube") -> "com.google.android.youtube"
+        host.contains("tiktok")  -> "com.zhiliaoapp.musically"
+        host.contains("instagram") -> "com.instagram.android"
+        host.contains("facebook")  -> "com.facebook.katana"
+        else -> null
+    }
+
+    // Try opening the installed app first
+    if (packageName != null) {
+        val launch = context.packageManager.getLaunchIntentForPackage(packageName)
+        if (launch != null) {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(launch)
+                return
+            } catch (e: Exception) { /* fall through to web */ }
+        }
+    }
+
+    // App not installed → open the website
+    val webIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://$host/")).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    try { context.startActivity(webIntent) } catch (e: Exception) { /* ignore */ }
+}
 
 private fun playFile(context: Context, filePath: String) {
     val file = File(filePath)
